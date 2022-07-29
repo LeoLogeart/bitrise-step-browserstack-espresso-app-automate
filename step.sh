@@ -9,6 +9,32 @@ upload_test_response="$(curl -u $browserstack_username:$browserstack_access_key 
 test_url=$(echo "$upload_test_response" | jq .test_url)
 
 echo "starting automated tests"
+jsonParamString='{devices: $devices, app: $app_url, testSuite: $test_url'
+# Adds parameters when not empty
+addParam()
+{
+    KEY=$1
+    VALUE=$2
+    if [[ ! -z $VALUE ]]
+    then
+        jsonParamString+=", $KEY: \$$KEY"
+    fi
+}
+addParam "package" "$browserstack_package"
+addParam "video" "$browserstack_video"
+addParam "class" "$browserstack_class"
+addParam "annotation" "$browserstack_annotation"
+addParam "size" "$browserstack_size"
+addParam "logs" "$browserstack_device_logs"
+addParam "video" "$browserstack_video"
+addParam "loc" "$browserstack_local"
+addParam "locId" "$browserstack_local_identifier"
+addParam "gpsLocation" "$browserstack_gps_location"
+addParam "language" "$browserstack_language"
+addParam "locale" "$browserstack_locale"
+addParam "callback" "$callback_url"
+jsonParamString+='}'
+
 json=$( jq -n \
                 --argjson app_url $app_url \
                 --argjson test_url $test_url \
@@ -25,7 +51,7 @@ json=$( jq -n \
                 --arg language "$browserstack_language" \
                 --arg locale "$browserstack_locale" \
                 --arg callback "$callback_url" \
-                '{devices: $devices, app: $app_url, testSuite: $test_url, package: $package, class: $class, annotation: $annotation, size: $size, logs: $logs, video: $video, local: $loc, localIdentifier: $locId, gpsLocation: $gpsLocation, language: $language, locale: $locale, callbackURL: $callback}')
+                "$jsonParamString")
 run_test_response="$(curl -X POST https://api-cloud.browserstack.com/app-automate/espresso/build -d \ "$json" -H "Content-Type: application/json" -u "$browserstack_username:$browserstack_access_key")"
 build_id=$(echo "$run_test_response" | jq .build_id | envman add --key BROWSERSTACK_BUILD_ID)
 
